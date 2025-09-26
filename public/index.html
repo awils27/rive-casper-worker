@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -8,17 +9,53 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
     /* minor tweaks */
-    header { padding: 1.25rem 0 0.25rem; }
-    .center { text-align: center; }
-    .sticky-footer { position: sticky; bottom: 0; padding: 0.75rem 0; background: var(--pico-background-color); }
-    .muted { color: var(--pico-muted-color); }
-    .mono { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
-    #props code, #inputs code { margin-right: .5rem; }
-    #props small, #inputs small { opacity: .7; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 900px){ .grid-2 { grid-template-columns: 1fr; } }
+    header {
+      padding: 1.25rem 0 0.25rem;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .sticky-footer {
+      position: sticky;
+      bottom: 0;
+      padding: 0.75rem 0;
+      background: var(--pico-background-color);
+    }
+
+    .muted {
+      color: var(--pico-muted-color);
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    #props code,
+    #inputs code {
+      margin-right: .5rem;
+    }
+
+    #props small,
+    #inputs small {
+      opacity: .7;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
+
 <body>
   <header class="container center">
     <h2>Rive → CasparCG</h2>
@@ -51,19 +88,31 @@
 
       <details open style="margin-top:1rem">
         <summary><strong>ViewModel Properties (data-binding)</strong></summary>
-        <div id="props" class="grid"></div>
+<div class="overflow-auto">
+        <table id="propsTable" role="grid">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Type</th>
+              <th scope="col">Sample JSON key</th>
+              <th scope="col">Notes</th>
+            </tr>
+          </thead>
+          <tbody id="propsBody"></tbody>
+        </table>
+        </div>
+
+        <p id="propsEmpty" class="muted" style="display:none">No ViewModel properties found.</p>
       </details>
 
-      <details open>
-        <summary><strong>State Machine Inputs</strong></summary>
-        <div id="inputs" class="grid"></div>
-      </details>
+
     </article>
 
     <!-- Caspar mapping + download -->
     <article id="mappingCard" style="display:none">
       <h4>CasparCG Animation Mapping</h4>
-      <p class="muted">Choose which <em>trigger inputs</em> the template should call for Play/In, Out, and Next. (Optional; you can also drive triggers via <code class="mono">CG ... UPDATE</code>.)</p>
+      <p class="muted">Choose which <em>trigger inputs</em> the template should call for Play/In, Out, and Next.
+        (Optional; you can also drive triggers via <code class="mono">CG ... UPDATE</code>.)</p>
       <div class="grid-2">
         <div>
           <label for="inTriggerSel">Play / In trigger</label>
@@ -97,7 +146,7 @@
   <!-- Rive Web (Canvas) -->
   <script src="https://unpkg.com/@rive-app/canvas"></script>
   <script type="module">
-    const $ = (s, el=document) => el.querySelector(s);
+    const $ = (s, el = document) => el.querySelector(s);
     const fileEl = $('#rivfile');
     const fileStatus = $('#fileStatus');
     const detectedCard = $('#detectedCard');
@@ -113,6 +162,9 @@
     const downloadBtn = $('#downloadBtn');
     const statusEl = $('#status');
     const canvas = $('#hiddenCanvas');
+    const propsTable = $('#propsTable');
+    const propsBody = $('#propsBody');
+    const propsEmpty = $('#propsEmpty');
 
     let file, buffer, contents;
     let currentArt = '';
@@ -150,7 +202,7 @@
               populateSelect(smSel, smsForArt, currentSM || smsForArt[0] || '');
               currentSM = smSel.value;
             } finally {
-              try { r.cleanup(); } catch {}
+              try { r.cleanup(); } catch { }
               resolve();
             }
           },
@@ -178,12 +230,12 @@
       renderSchema();
     });
 
-    function getSMsForArt(artName){
+    function getSMsForArt(artName) {
       const art = (contents?.artboards || []).find(a => a.name === artName);
       return (art?.stateMachines || []).map(sm => sm.name);
     }
 
-    function populateSelect(sel, items, selected=''){
+    function populateSelect(sel, items, selected = '') {
       sel.innerHTML = '';
       if (!items || items.length === 0) {
         const opt = document.createElement('option');
@@ -201,71 +253,65 @@
       }
     }
 
-    async function buildSchema(artboard, stateMachine){
-      schema = await new Promise((resolve, reject) => {
-        const r = new rive.Rive({
-          buffer, canvas,
-          autoplay: false,
-          artboard,
-          stateMachines: stateMachine || undefined,
-          autoBind: true,
-          onLoad() {
-            let viewModelProps = [];
-            try {
-              const vm = r.defaultViewModel?.();
-              viewModelProps = vm?.properties
-                ? vm.properties.map(p => ({ name: p.name, type: p.type }))
-                : [];
-            } catch {}
+async function buildSchema(artboard, stateMachine){
+  schema = await new Promise((resolve, reject) => {
+    const r = new rive.Rive({
+      buffer, canvas,
+      autoplay: false,
+      artboard,
+      stateMachines: stateMachine || undefined,
+      autoBind: true,
+      onLoad() {
+        let viewModelProps = [];
+        try {
+          const vm = r.defaultViewModel?.();
+          viewModelProps = vm?.properties
+            ? vm.properties.map(p => ({ name: p.name, type: p.type }))  // includes 'trigger'
+            : [];
+        } catch {}
+        resolve({ artboard, stateMachine, viewModelProps, inputs: [] });
+        try { r.cleanup(); } catch {}
+      },
+      onLoadError: reject
+    });
+  });
+}
 
-            let inputs = [];
-            try {
-              inputs = stateMachine ? (r.stateMachineInputs(stateMachine) || []) : [];
-            } catch {}
-            resolve({
-              artboard,
-              stateMachine,
-              inputs: inputs.map(i => ({ name: i.name, type: i.type })), // boolean|number|trigger
-              viewModelProps                                            // string|number|boolean|color
-            });
-            try { r.cleanup(); } catch {}
-          },
-          onLoadError: reject
-        });
-      });
+
+function renderSchema(){
+  // ViewModel table
+  propsBody.innerHTML = '';
+  if (!schema.viewModelProps.length) {
+    propsTable.style.display = 'none';
+    propsEmpty.style.display = 'block';
+  } else {
+    propsTable.style.display = '';
+    propsEmpty.style.display = 'none';
+
+    const rows = [...schema.viewModelProps].sort((a,b)=>a.name.localeCompare(b.name));
+    for (const p of rows) {
+      const note =
+        p.type === 'color'   ? 'Accepts <code>#RRGGBB</code> or <code>0xAARRGGBB</code>' :
+        p.type === 'trigger' ? 'Fire by mapping to Play/Out/Next or via UPDATE { "<name>": true }' :
+        '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><code>${escapeHtml(p.name)}</code></td>
+        <td><small class="muted">${p.type}</small></td>
+        <td><code>${escapeHtml(p.name)}</code></td>
+        <td>${note}</td>
+      `;
+      propsBody.appendChild(tr);
     }
+  }
 
-    function renderSchema(){
-      // Props
-      propsBox.innerHTML = '';
-      if (!schema.viewModelProps.length) {
-        propsBox.innerHTML = '<p class="muted">No ViewModel properties found.</p>';
-      } else {
-        for (const p of schema.viewModelProps) {
-          const li = document.createElement('div');
-          li.innerHTML = `<code>${escapeHtml(p.name)}</code> <small>${p.type}</small>`;
-          propsBox.appendChild(li);
-        }
-      }
+  // Trigger mapping selects (from ViewModel properties only)
+  const triggerNames = schema.viewModelProps.filter(p => p.type === 'trigger').map(p => p.name);
+  populateSelect(inSel,   ['(none)', ...triggerNames], '(none)');
+  populateSelect(outSel,  ['(none)', ...triggerNames], '(none)');
+  populateSelect(nextSel, ['(none)', ...triggerNames], '(none)');
+}
 
-      // Inputs
-      inputsBox.innerHTML = '';
-      if (!schema.inputs.length) {
-        inputsBox.innerHTML = '<p class="muted">No State Machine inputs found.</p>';
-      } else {
-        for (const i of schema.inputs) {
-          const li = document.createElement('div');
-          li.innerHTML = `<code>${escapeHtml(i.name)}</code> <small>${i.type}</small>`;
-          inputsBox.appendChild(li);
-        }
-      }
-
-      // Trigger mapping selects (only triggers)
-      const triggerNames = schema.inputs.filter(i => i.type === 'trigger').map(i => i.name);
-      populateSelect(inSel, ['(none)', ...triggerNames], '(none)');
-      populateSelect(outSel, ['(none)', ...triggerNames], '(none)');
-      populateSelect(nextSel, ['(none)', ...triggerNames], '(none)');
-    }
 
     downloadBtn.addEventListener('click', async () => {
       if (!schema) return;
@@ -284,7 +330,7 @@
       const payload = {
         template: 'caspar-basic',
         schema,
-        filename: `caspar-${(file?.name || 'template').replace(/\.riv$/i,'')}.html`,
+        filename: `caspar-${(file?.name || 'template').replace(/\.riv$/i, '')}.html`,
         options
       };
 
@@ -310,8 +356,9 @@
 
     // helpers
     const pickOrNull = (v) => (v && v !== '(none)') ? v : null;
-    const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   </script>
 </body>
+
 </html>

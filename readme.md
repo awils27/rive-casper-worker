@@ -194,16 +194,9 @@ The generated HTML provides:
 
 ## Roadmap
 
-* ZIP bundle output (HTML + `/assets/graphics.riv` placeholder)
 * Multiple template presets (lower third, bug, ticker)
 * Alias editor UI and type‑aware form generation
 * Optional remote schema signing or caching (still without uploading .riv)
-
----
-
-## Contributing
-
-PRs welcome! For significant changes, please open an issue first to discuss your idea. Follow the modular plugin pattern and include tests for new generators.
 
 ---
 
