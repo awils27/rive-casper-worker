@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Rive → Casper Template Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+  <h1>Rive → CasparCG</h1>
+  <input id="riv" type="file" accept=".riv" />
+  <select id="tpl"></select>
+  <button id="analyze" disabled>Analyze .riv</button>
+  <pre id="out"></pre>
+  <button id="download" disabled>Download</button>
+
+  <canvas id="c" width="64" height="64" style="display:none"></canvas>
+  <script src="https://unpkg.com/@rive-app/canvas"></script>
+  <script type="module">
+    import { introspect } from "./js/introspect.mjs";
+    import { listTemplates, generate } from "./js/api.mjs";
+
+    const fileEl = document.getElementById('riv');
+    const analyze = document.getElementById('analyze');
+    const out = document.getElementById('out');
+    const dl = document.getElementById('download');
+    const tplSel = document.getElementById('tpl');
+    const canvas = document.getElementById('c');
+
+    let schema = null; let file = null;
+
+    // Load plugin list
+    (await listTemplates()).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.key; opt.textContent = t.name;
+      tplSel.appendChild(opt);
+    });
+
+    fileEl.addEventListener('change', () => {
+      file = fileEl.files?.[0] || null;
+      analyze.disabled = !file;
+    });
+
+    analyze.addEventListener('click', async () => {
+      const buf = await file.arrayBuffer();
+      schema = await introspect(buf, canvas);
+      out.textContent = JSON.stringify(schema, null, 2);
+      dl.disabled = false;
+    });
+
+    dl.addEventListener('click', async () => {
+      const res = await generate({
+        schema,
+        template: tplSel.value,
+        filename: `caspar-${(file?.name || 'template').replace(/\.riv$/i,'')}.html`
+      });
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (res.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1]) || 'caspar-template.html';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  </script>
+</body>
+</html>
