@@ -59,7 +59,7 @@ function buildHtml(schema, aliasMap, options) {
 </head>
 <body>
   <div id="stage"><canvas id="cg" width="1920" height="1080"></canvas></div>
-  <script src="https://unpkg.com/@rive-app/canvas"></script>
+  <script src="https://unpkg.com/@rive-app/webgl"></script>
   <script>
     'use strict';
     const CANVAS = document.getElementById('cg');
