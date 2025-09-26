@@ -1,66 +1,317 @@
 <!doctype html>
-<html>
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Rive → Casper Template Generator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="/css/app.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rive → CasparCG Generator</title>
+  <!-- PicoCSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    /* minor tweaks */
+    header { padding: 1.25rem 0 0.25rem; }
+    .center { text-align: center; }
+    .sticky-footer { position: sticky; bottom: 0; padding: 0.75rem 0; background: var(--pico-background-color); }
+    .muted { color: var(--pico-muted-color); }
+    .mono { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
+    #props code, #inputs code { margin-right: .5rem; }
+    #props small, #inputs small { opacity: .7; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 900px){ .grid-2 { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
-  <h1>Rive → CasparCG</h1>
-  <input id="riv" type="file" accept=".riv" />
-  <select id="tpl"></select>
-  <button id="analyze" disabled>Analyze .riv</button>
-  <pre id="out"></pre>
-  <button id="download" disabled>Download</button>
+  <header class="container center">
+    <h2>Rive → CasparCG</h2>
+    <p class="muted">Inspect .riv locally, map triggers, download a ready-made HTML template.</p>
+  </header>
 
-  <canvas id="c" width="64" height="64" style="display:none"></canvas>
+  <main class="container">
+    <!-- Top: file chooser centered -->
+    <article>
+      <form id="fileForm" class="center">
+        <label for="rivfile"><strong>Select a .riv file</strong></label>
+        <input id="rivfile" type="file" accept=".riv" />
+        <small id="fileStatus" class="muted">No file selected.</small>
+      </form>
+    </article>
+
+    <!-- Detected structure & selectors -->
+    <article id="detectedCard" style="display:none">
+      <h4>Detected Structure</h4>
+      <div class="grid-2">
+        <div>
+          <label for="artboardSel">Artboard</label>
+          <select id="artboardSel"></select>
+        </div>
+        <div>
+          <label for="smSel">State Machine</label>
+          <select id="smSel"></select>
+        </div>
+      </div>
+
+      <details open style="margin-top:1rem">
+        <summary><strong>ViewModel Properties (data-binding)</strong></summary>
+        <div id="props" class="grid"></div>
+      </details>
+
+      <details open>
+        <summary><strong>State Machine Inputs</strong></summary>
+        <div id="inputs" class="grid"></div>
+      </details>
+    </article>
+
+    <!-- Caspar mapping + download -->
+    <article id="mappingCard" style="display:none">
+      <h4>CasparCG Animation Mapping</h4>
+      <p class="muted">Choose which <em>trigger inputs</em> the template should call for Play/In, Out, and Next. (Optional; you can also drive triggers via <code class="mono">CG ... UPDATE</code>.)</p>
+      <div class="grid-2">
+        <div>
+          <label for="inTriggerSel">Play / In trigger</label>
+          <select id="inTriggerSel"></select>
+        </div>
+        <div>
+          <label for="outTriggerSel">Out trigger</label>
+          <select id="outTriggerSel"></select>
+        </div>
+      </div>
+      <div style="margin-top:1rem">
+        <label for="nextTriggerSel">Next trigger</label>
+        <select id="nextTriggerSel"></select>
+      </div>
+
+      <fieldset role="group" style="margin-top:1.25rem">
+        <input id="includeVmProps" type="checkbox" checked />
+        <label for="includeVmProps">Include ViewModel property mapping in template</label>
+      </fieldset>
+
+      <div class="sticky-footer center">
+        <button id="downloadBtn" class="contrast" disabled>Download Caspar Template</button>
+        <p id="status" class="muted" style="margin:.5rem 0 0"></p>
+      </div>
+    </article>
+  </main>
+
+  <!-- Hidden canvas just to satisfy the Rive runtime (we don't render) -->
+  <canvas id="hiddenCanvas" width="64" height="64" style="display:none"></canvas>
+
+  <!-- Rive Web (Canvas) -->
   <script src="https://unpkg.com/@rive-app/canvas"></script>
   <script type="module">
-    import { introspect } from "./js/introspect.mjs";
-    import { listTemplates, generate } from "./js/api.mjs";
+    const $ = (s, el=document) => el.querySelector(s);
+    const fileEl = $('#rivfile');
+    const fileStatus = $('#fileStatus');
+    const detectedCard = $('#detectedCard');
+    const mappingCard = $('#mappingCard');
+    const artSel = $('#artboardSel');
+    const smSel = $('#smSel');
+    const propsBox = $('#props');
+    const inputsBox = $('#inputs');
+    const inSel = $('#inTriggerSel');
+    const outSel = $('#outTriggerSel');
+    const nextSel = $('#nextTriggerSel');
+    const includeVmPropsEl = $('#includeVmProps');
+    const downloadBtn = $('#downloadBtn');
+    const statusEl = $('#status');
+    const canvas = $('#hiddenCanvas');
 
-    const fileEl = document.getElementById('riv');
-    const analyze = document.getElementById('analyze');
-    const out = document.getElementById('out');
-    const dl = document.getElementById('download');
-    const tplSel = document.getElementById('tpl');
-    const canvas = document.getElementById('c');
+    let file, buffer, contents;
+    let currentArt = '';
+    let currentSM = '';
+    let schema = null; // { artboard, stateMachine, inputs[], viewModelProps[] }
 
-    let schema = null; let file = null;
-
-    // Load plugin list
-    (await listTemplates()).forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t.key; opt.textContent = t.name;
-      tplSel.appendChild(opt);
+    fileEl.addEventListener('change', async () => {
+      file = fileEl.files?.[0];
+      if (!file) {
+        fileStatus.textContent = 'No file selected.';
+        return;
+      }
+      fileStatus.textContent = 'Reading file…';
+      buffer = await file.arrayBuffer();
+      await inspectContents();
+      detectedCard.style.display = 'block';
+      mappingCard.style.display = 'block';
+      fileStatus.textContent = `Loaded ${file.name}`;
+      downloadBtn.disabled = false;
     });
 
-    fileEl.addEventListener('change', () => {
-      file = fileEl.files?.[0] || null;
-      analyze.disabled = !file;
-    });
+    async function inspectContents() {
+      // First instance: read top-level contents (artboards, SMs)
+      await new Promise((resolve, reject) => {
+        const r = new rive.Rive({
+          buffer, canvas, autoplay: false,
+          onLoad() {
+            try {
+              contents = r.contents; // hierarchy summary (artboards, SMs, inputs)
+              const artNames = (contents?.artboards || []).map(a => a.name);
+              populateSelect(artSel, artNames, currentArt || artNames[0] || '');
+              currentArt = artSel.value;
 
-    analyze.addEventListener('click', async () => {
-      const buf = await file.arrayBuffer();
-      schema = await introspect(buf, canvas);
-      out.textContent = JSON.stringify(schema, null, 2);
-      dl.disabled = false;
-    });
-
-    dl.addEventListener('click', async () => {
-      const res = await generate({
-        schema,
-        template: tplSel.value,
-        filename: `caspar-${(file?.name || 'template').replace(/\.riv$/i,'')}.html`
+              const smsForArt = getSMsForArt(currentArt);
+              populateSelect(smSel, smsForArt, currentSM || smsForArt[0] || '');
+              currentSM = smSel.value;
+            } finally {
+              try { r.cleanup(); } catch {}
+              resolve();
+            }
+          },
+          onLoadError: reject
+        });
       });
+
+      // Second instance: bind to selected artboard/SM to get VM props & inputs
+      await buildSchema(currentArt, currentSM);
+      renderSchema();
+    }
+
+    artSel.addEventListener('change', async () => {
+      currentArt = artSel.value;
+      const sms = getSMsForArt(currentArt);
+      populateSelect(smSel, sms, sms[0] || '');
+      currentSM = smSel.value;
+      await buildSchema(currentArt, currentSM);
+      renderSchema();
+    });
+
+    smSel.addEventListener('change', async () => {
+      currentSM = smSel.value;
+      await buildSchema(currentArt, currentSM);
+      renderSchema();
+    });
+
+    function getSMsForArt(artName){
+      const art = (contents?.artboards || []).find(a => a.name === artName);
+      return (art?.stateMachines || []).map(sm => sm.name);
+    }
+
+    function populateSelect(sel, items, selected=''){
+      sel.innerHTML = '';
+      if (!items || items.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = '(none)';
+        sel.appendChild(opt);
+        sel.disabled = true;
+        return;
+      }
+      sel.disabled = false;
+      for (const name of items) {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        if (name === selected) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    async function buildSchema(artboard, stateMachine){
+      schema = await new Promise((resolve, reject) => {
+        const r = new rive.Rive({
+          buffer, canvas,
+          autoplay: false,
+          artboard,
+          stateMachines: stateMachine || undefined,
+          autoBind: true,
+          onLoad() {
+            let viewModelProps = [];
+            try {
+              const vm = r.defaultViewModel?.();
+              viewModelProps = vm?.properties
+                ? vm.properties.map(p => ({ name: p.name, type: p.type }))
+                : [];
+            } catch {}
+
+            let inputs = [];
+            try {
+              inputs = stateMachine ? (r.stateMachineInputs(stateMachine) || []) : [];
+            } catch {}
+            resolve({
+              artboard,
+              stateMachine,
+              inputs: inputs.map(i => ({ name: i.name, type: i.type })), // boolean|number|trigger
+              viewModelProps                                            // string|number|boolean|color
+            });
+            try { r.cleanup(); } catch {}
+          },
+          onLoadError: reject
+        });
+      });
+    }
+
+    function renderSchema(){
+      // Props
+      propsBox.innerHTML = '';
+      if (!schema.viewModelProps.length) {
+        propsBox.innerHTML = '<p class="muted">No ViewModel properties found.</p>';
+      } else {
+        for (const p of schema.viewModelProps) {
+          const li = document.createElement('div');
+          li.innerHTML = `<code>${escapeHtml(p.name)}</code> <small>${p.type}</small>`;
+          propsBox.appendChild(li);
+        }
+      }
+
+      // Inputs
+      inputsBox.innerHTML = '';
+      if (!schema.inputs.length) {
+        inputsBox.innerHTML = '<p class="muted">No State Machine inputs found.</p>';
+      } else {
+        for (const i of schema.inputs) {
+          const li = document.createElement('div');
+          li.innerHTML = `<code>${escapeHtml(i.name)}</code> <small>${i.type}</small>`;
+          inputsBox.appendChild(li);
+        }
+      }
+
+      // Trigger mapping selects (only triggers)
+      const triggerNames = schema.inputs.filter(i => i.type === 'trigger').map(i => i.name);
+      populateSelect(inSel, ['(none)', ...triggerNames], '(none)');
+      populateSelect(outSel, ['(none)', ...triggerNames], '(none)');
+      populateSelect(nextSel, ['(none)', ...triggerNames], '(none)');
+    }
+
+    downloadBtn.addEventListener('click', async () => {
+      if (!schema) return;
+      statusEl.textContent = 'Generating…';
+
+      const options = {
+        casparTriggers: {
+          in: pickOrNull(inSel.value),
+          out: pickOrNull(outSel.value),
+          next: pickOrNull(nextSel.value)
+        },
+        includeViewModelProps: !!includeVmPropsEl.checked
+      };
+
+      // You can switch templates later; keeping "caspar-basic" here
+      const payload = {
+        template: 'caspar-basic',
+        schema,
+        filename: `caspar-${(file?.name || 'template').replace(/\.riv$/i,'')}.html`,
+        options
+      };
+
+      const res = await fetch('/generate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        statusEl.textContent = `Error: ${res.status} ${res.statusText}`;
+        return;
+      }
+
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = (res.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1]) || 'caspar-template.html';
       a.click();
       URL.revokeObjectURL(a.href);
+      statusEl.textContent = 'Downloaded template.';
     });
+
+    // helpers
+    const pickOrNull = (v) => (v && v !== '(none)') ? v : null;
+    const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
   </script>
 </body>
 </html>
