@@ -1,21 +1,20 @@
-// src/worker.mjs
+import generate from "./handlers/generate.mjs";
+import { listPlugins } from "./templates/registry.mjs";
+
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request) {
     const url = new URL(request.url);
 
-    if (request.method === "POST" && url.pathname === "/generate") {
-      const { schema, filename = "caspar-template.html" } = await request.json();
-      // TODO: call your plugin to build HTML from schema:
-      const html = "<!doctype html><meta charset='utf-8'><title>ok</title>ok";
-      return new Response(html, {
-        headers: {
-          "content-type": "text/html; charset=utf-8",
-          "content-disposition": `attachment; filename="${filename}"`
-        }
+    if (request.method === "GET" && url.pathname === "/templates") {
+      return new Response(JSON.stringify(listPlugins()), {
+        headers: { "content-type": "application/json" },
       });
     }
 
-    // No match: let the assets system serve files (index.html, JS, CSS)
+    if (request.method === "POST" && url.pathname === "/generate") {
+      return generate(request);
+    }
+
     return new Response("Not found", { status: 404 });
-  }
+  },
 };

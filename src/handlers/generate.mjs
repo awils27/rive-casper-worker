@@ -1,18 +1,36 @@
-// src/handlers/generate.mjs
-import { validate } from "../lib/schema.js";
 import { getPlugin } from "../templates/registry.mjs";
-import { downloadHeaders } from "../lib/utils.js";
 
-export default async (req) => {
-  const { schema, filename = "caspar-template.html", template = "caspar-basic", aliasMap = {}, options = {} } = await req.json();
-  const schemaOk = validate(schema);
+export default async function generate(request) {
+  const {
+    template = "caspar-basic",
+    schema,
+    filename = "caspar-template.html",
+    aliasMap = {},
+    options = {},
+  } = await request.json();
+
   const plugin = getPlugin(template);
-  if (!plugin) return new Response("Unknown template", { status: 400 });
+  const out = await plugin.generate(schema, { aliasMap, options });
 
-  const out = await plugin.generate(schemaOk, { aliasMap, options });
-  // out can be { type: "html", content } or { type: "zip", content: ArrayBuffer }
   if (out.type === "zip") {
-    return new Response(out.content, downloadHeaders(filename.replace(/\.html$/i, ".zip"), "application/zip"));
+    return new Response(out.content, {
+      headers: {
+        "content-type": "application/zip",
+        "content-disposition": `attachment; filename="${sanitize(filename, ".zip")}"`,
+      },
+    });
   }
-  return new Response(out.content, downloadHeaders(filename, "text/html; charset=utf-8"));
-};
+
+  // default: html
+  return new Response(out.content, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "content-disposition": `attachment; filename="${sanitize(filename, ".html")}"`,
+    },
+  });
+}
+
+function sanitize(name, ext) {
+  const base = String(name || `caspar-template${ext || ""}`);
+  return base.replace(/[^\w.-]/g, "_");
+}
