@@ -1,9 +1,6 @@
-// src/templates/registry.mjs
 import casparBasic from "./caspar-basic.mjs";
-import casparLowerThird from "./caspar-lowerthird.mjs";
-import casparBundle from "./caspar-bundle.mjs";
+// add more plugins here
 
-const plugins = [casparBasic, casparLowerThird, casparBundle];
-
-export const registry = () => plugins;
+const plugins = [casparBasic];
+export const registry  = () => plugins;
 export const getPlugin = (key) => plugins.find(p => p.key === key);

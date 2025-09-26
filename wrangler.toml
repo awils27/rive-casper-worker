@@ -1,8 +1,7 @@
 name = "rive-casparcg-generator"
-main = "src/worker.mjs"                 # <— your Worker entry file
-compatibility_date = "2025-09-26"       # must be ≥ 2024-09-23 for Node compat
-compatibility_flags = ["nodejs_compat"] # Node APIs in Workers
+main = "src/worker.mjs"
+compatibility_date = "2025-09-25"
+compatibility_flags = ["nodejs_compat"]
 
-[assets]                                 # <— serves /public as static files
+[assets]                                
 directory = "public"
-# binding = "ASSETS"                     # optional: if you want env.ASSETS.fetch()
