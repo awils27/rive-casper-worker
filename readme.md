@@ -98,6 +98,14 @@ directory = "public"
 
 ---
 
+## Local Dev
+
+```bash
+npx wrangler dev
+```
+
+---
+
 ## Deploy
 
 ```bash
@@ -144,27 +152,7 @@ Request body:
 
 Response:
 
-* `text/html` (downloaded file) or `application/zip` (if the plugin returns a bundle).
-
----
-
-## Template Plugins
-
-A plugin is a pure function that turns a `schema` into a file (HTML or ZIP):
-
-```js
-export default {
-  key: "caspar-basic",
-  name: "Caspar Basic",
-  kind: "single-html",
-  description: "AMCP HTML template",
-  async generate(schema, { aliasMap = {}, options = {} } = {}) {
-    // Build and return { type: "html"|"zip", content }
-  }
-}
-```
-
-Register new plugins in `src/templates/registry.mjs` and the UI can expose them via `/templates`.
+* `text/html` (downloaded file)
 
 ---
 
@@ -182,35 +170,17 @@ The generated HTML provides:
 
 ---
 
-## Troubleshooting
-
-* **Missing entry point**: Ensure `main = "src/worker.mjs"` exists in `wrangler.toml` and that the file is committed.
-* **Static HTML import errors**: Don’t `import "public/index.html?raw"`; serve it via `[assets]` instead.
-* **Name mismatch in CI**: Align `name = "…"` with the CI/Workers project name.
-* **404s in dev**: Verify `/public` exists and the `[assets]` directory matches.
-* **Rive not loading**: Confirm the runtime script is loaded (`@rive-app/canvas`) and a hidden `<canvas>` exists.
-
----
-
-## Roadmap
-
-* Multiple template presets (lower third, bug, ticker)
-* Alias editor UI and type‑aware form generation
-* Optional remote schema signing or caching (still without uploading .riv)
-
----
-
 ## License
 
-MIT © Your Name
+GPL 3.0 © Aiden Wilson
 
 ---
 
 ## Acknowledgements
 
-* [Rive Web Runtime]
-* [CasparCG]
-* [Cloudflare Workers]
-* [PicoCSS]
+* [Rive Web Runtime](https://rive.app/docs/runtimes/web/web-js)
+* [CasparCG](https://casparcg.com/)
+* [Cloudflare Workers](https://developers.cloudflare.com/workers/)
+* [PicoCSS](https://picocss.com/)
 
 > Trademarks and brand names are the property of their respective owners.
