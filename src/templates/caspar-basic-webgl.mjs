@@ -1,10 +1,11 @@
-// src/templates/caspar-basic.mjs
+// src/templates/caspar-basic-webgl.mjs
+// Same data-binding behaviour as caspar-basic, but uses the WebGL runtime.
 export default {
-  key: "caspar-basic",
-  name: "Caspar Basic (Data Binding Only)",
+  key: "caspar-basic-webgl",
+  name: "Caspar Basic (WebGL)",
   kind: "single-html",
   description:
-    "HTML template using View Model for text/colors/booleans/numbers and triggers for Play/Out/Next",
+    "HTML template using the Rive WebGL runtime for animation playback",
   async generate(schema, { aliasMap = {}, options = {} } = {}) {
     const html = buildHtml(schema, aliasMap, options);
     return { type: "html", content: html };
@@ -16,7 +17,7 @@ function buildHtml(schema, aliasMap, options) {
   const trigIn   = options?.casparTriggers?.in   || null;
   const trigOut  = options?.casparTriggers?.out  || null;
   const trigNext = options?.casparTriggers?.next || null;
-  const runtimeUrl = options?.riveRuntimeUrl || "https://unpkg.com/@rive-app/canvas";
+  const runtimeUrl = options?.riveRuntimeUrl || "https://unpkg.com/@rive-app/webgl";
   const rivPath = options?.rivPath || "./graphics.riv";
 
   const setters = (viewModelProps || []).map(({ name, type }) => {
@@ -73,7 +74,7 @@ function buildHtml(schema, aliasMap, options) {
 <html>
 <head>
 <meta charset="utf-8" />
-<title>CasparCG + Rive (Data Binding)</title>
+<title>CasparCG + Rive (WebGL)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   html{background:transparent;overflow:hidden}
@@ -211,7 +212,6 @@ function buildHtml(schema, aliasMap, options) {
       ${setters}
     }
 
-    // CasparCG HTML API - ONLY View Model (data binding & triggers)
     window.update = function (raw) {
       try { apply(JSON.parse(raw)); }
       catch (e) { console.error('bad JSON for UPDATE', e, raw); }
@@ -262,6 +262,3 @@ function buildHtml(schema, aliasMap, options) {
 function escapeJS(s) {
   return String(s).replace(/["\\]/g, function(m) { return "\\\\" + m; });
 }
-
-
-

@@ -4,7 +4,7 @@
  * @typedef {"string"|"number"|"boolean"|"color"} VMPropType
  *
  * @typedef {{ name: string, type: SMInputType }} SMInput
- * @typedef {{ name: string, type: VMPropType }} VMProp
+ * @typedef {{ name: string, type: VMPropType, value?: unknown }} VMProp
  *
  * @typedef {{
  *   artboard?: string,
