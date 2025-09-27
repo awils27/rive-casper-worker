@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
     header{padding:1.25rem 0 .25rem}.center{text-align:center}
-    .sticky-footer{position:sticky;bottom:0;padding:.75rem 0;background:var(--pico-background-color)}
     .muted{color:var(--pico-muted-color)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
     @media (max-width:900px){.grid-2{grid-template-columns:1fr}}
@@ -17,7 +16,7 @@
 <body>
   <header class="container center">
     <h2>Rive → CasparCG</h2>
-    <p class="muted">Inspect .riv locally, map triggers, download a ready-made HTML template.</p>
+    <p class="muted">Inspect a .riv file in your browser, map triggers and properties, download a ready-made HTML template and a CasparCG Client preset.</p>
   </header>
 
   <main class="container">
@@ -70,12 +69,12 @@
       <p class="muted">Choose which <em>ViewModel triggers</em> the template should call for Play/In, Out, and Next.
         (You can also fire any trigger via <code class="mono">CG ... UPDATE</code>.)</p>
 
-      <p id="runtimeNotice" class="muted" style="display:none;margin-top:-.5rem;margin-bottom:1rem">
-        WebGL/WebGPU requires enabling <code>&lt;enable-gpu&gt;true&lt;/enable-gpu&gt;</code> in your CasparCG config; falling back to Canvas if unavailable.
-      </p>
+      <p id="runtimeNotice" class="muted" style="display:none;margin-top:-.5rem;margin-bottom:1rem"><b>
+        WebGL/WebGPU requires enabling <code>&lt;HTML&gt;&lt;enable-gpu&gt;true&lt;/enable-gpu&gt;&lt;/HTML&gt;</code> in your CasparCG config.
+      </b></p>
       <fieldset id="runtimeChoice" style="margin:1rem 0">
         <legend><strong>Rive Runtime</strong></legend>
-        <label><input type="radio" name="runtime" value="caspar-basic" checked /> Canvas (recommended)</label>
+        <label><input type="radio" name="runtime" value="caspar-basic" checked /> Canvas (best compatibility)</label>
         <label><input type="radio" name="runtime" value="caspar-basic-webgl" /> WebGL / WebGPU (requires CasparCG GPU mode)</label>
       </fieldset>
 
@@ -94,19 +93,27 @@
         <select id="nextTriggerSel"></select>
       </div>
 
-      <fieldset role="group" style="margin-top:1.25rem">
+      <fieldset style="margin-top:1.25rem">
         <input id="includeVmProps" type="checkbox" checked />
-        <label for="includeVmProps">Include ViewModel property mapping in template</label>
+        <label for="includeVmProps">Include ViewModel property controls in template</label>
       </fieldset>
 
-<div class="sticky-footer center" style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
-  <button id="downloadBtn" class="contrast" disabled>Download Caspar Template</button>
-  <button id="downloadPresetBtn" class="secondary" disabled>Download Preset (.xml)</button>
-  <p id="status" class="muted" style="margin:.5rem 0 0;flex-basis:100%"></p>
-</div>
+<section id="actions" class="center">
+  <button id="downloadBtn" class="contrast" disabled>Download Caspar Template (.html)</button>
+  <button id="downloadPresetBtn" class="secondary" disabled>Download Caspar Preset (.xml)</button>
+  <p id="status" class="muted"></p>
+</section>
+
 
     </article>
   </main>
+   <footer class="container">
+      <small>
+        <a href="https://github.com/awils27/rive-casper-worker" target="_blank" class="secondary"
+          >Source code</a
+        ></small
+      >
+    </footer>
 
   <canvas id="hiddenCanvas" width="64" height="64" style="display:none"></canvas>
 
