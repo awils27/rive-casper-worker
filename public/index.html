@@ -75,7 +75,34 @@
     <!-- Detected structure & selectors -->
     <article id="detectedCard" style="display:none">
       <h4>Detected Structure</h4>
-      <div class="grid-2">
+      <label for="presetToggle" style="display:flex;align-items:center;gap:.5rem;margin:.75rem 0 .5rem;">
+        <input id="presetToggle" type="checkbox" /> Generate Caspar preset (.xml)
+      </label>
+      <div id="presetConfig" style="display:none;margin-bottom:1rem;">
+        <div class="grid-2">
+          <div>
+            <label for="presetLabel">Preset Label / Name</label>
+            <input id="presetLabel" type="text" />
+          </div>
+          <div>
+            <label for="presetDevice">Caspar Device</label>
+            <input id="presetDevice" type="text" value="Localhost" />
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:0.75rem;">
+          <div>
+            <label for="presetLayer">Layer</label>
+            <input id="presetLayer" type="number" min="1" value="20" />
+          </div>
+          <div>
+            <label for="presetSendJson">Send as JSON</label>
+            <select id="presetSendJson">
+              <option value="true" selected>True</option>
+              <option value="false">False</option>
+            </select>
+          </div>
+        </div>
+      </div>      <div class="grid-2">
         <div>
           <label for="artboardSel">Artboard</label>
           <select id="artboardSel"></select>
@@ -113,7 +140,42 @@
       <h4>CasparCG Animation Mapping</h4>
       <p class="muted">Choose which <em>trigger inputs</em> the template should call for Play/In, Out, and Next.
         (Optional; you can also drive triggers via <code class="mono">CG ... UPDATE</code>.)</p>
-      <div class="grid-2">
+      <p id="runtimeNotice" class="muted" style="display:none;margin-top:-0.5rem;margin-bottom:1rem">
+        WebGL/WebGPU requires enabling <code>&lt;enable-gpu&gt;true&lt;/enable-gpu&gt;</code> in your CasparCG config; falling back to Canvas if unavailable.
+      </p>
+      <fieldset id="runtimeChoice" style="margin:1rem 0">
+        <legend><strong>Rive Runtime</strong></legend>
+        <label><input type="radio" name="runtime" value="caspar-basic" checked /> Canvas (recommended)</label>
+        <label><input type="radio" name="runtime" value="caspar-basic-webgl" /> WebGL / WebGPU (requires CasparCG GPU mode)</label
+      </fieldset>
+      <label for="presetToggle" style="display:flex;align-items:center;gap:.5rem;margin:.75rem 0 .5rem;">
+        <input id="presetToggle" type="checkbox" /> Generate Caspar preset (.xml)
+      </label>
+      <div id="presetConfig" style="display:none;margin-bottom:1rem;">
+        <div class="grid-2">
+          <div>
+            <label for="presetLabel">Preset Label / Name</label>
+            <input id="presetLabel" type="text" />
+          </div>
+          <div>
+            <label for="presetDevice">Caspar Device</label>
+            <input id="presetDevice" type="text" value="Localhost" />
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:0.75rem;">
+          <div>
+            <label for="presetLayer">Layer</label>
+            <input id="presetLayer" type="number" min="1" value="20" />
+          </div>
+          <div>
+            <label for="presetSendJson">Send as JSON</label>
+            <select id="presetSendJson">
+              <option value="true" selected>True</option>
+              <option value="false">False</option>
+            </select>
+          </div>
+        </div>
+      </div>      <div class="grid-2">
         <div>
           <label for="inTriggerSel">Play / In trigger</label>
           <select id="inTriggerSel"></select>
@@ -313,6 +375,18 @@ function renderSchema(){
 }
 
 
+    const runtimeNotice = document.getElementById('runtimeNotice');
+    const runtimeInputs = Array.from(document.querySelectorAll('input[name="runtime"]'));
+    const updateRuntimeNotice = () => {
+      const current = document.querySelector('input[name="runtime"]:checked');
+      if (!runtimeNotice) return;
+      runtimeNotice.style.display = current && current.value === 'caspar-basic-webgl' ? '' : 'none';
+    };
+    runtimeInputs.forEach((input) => {
+      input.addEventListener('change', updateRuntimeNotice);
+    });
+    updateRuntimeNotice();
+
     downloadBtn.addEventListener('click', async () => {
       if (!schema) return;
       statusEl.textContent = 'Generating…';
@@ -323,12 +397,14 @@ function renderSchema(){
           out: pickOrNull(outSel.value),
           next: pickOrNull(nextSel.value)
         },
+        rivPath: (file && file.name) ? file.name : "graphics.riv",
         includeViewModelProps: !!includeVmPropsEl.checked
       };
 
-      // You can switch templates later; keeping "caspar-basic" here
+      const selectedTemplate = document.querySelector('input[name="runtime"]:checked')?.value || 'caspar-basic';
+
       const payload = {
-        template: 'caspar-basic',
+        template: selectedTemplate,
         schema,
         filename: `caspar-${(file?.name || 'template').replace(/\.riv$/i, '')}.html`,
         options
@@ -359,8 +435,11 @@ function renderSchema(){
     const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   </script>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4892068453008931"
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4892068453008931"
      crossorigin="anonymous"></script>
 </body>
 
 </html>
+
+
+
