@@ -1,61 +1,19 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Rive → CasparCG Generator</title>
-  <!-- PicoCSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
-    /* minor tweaks */
-    header {
-      padding: 1.25rem 0 0.25rem;
-    }
-
-    .center {
-      text-align: center;
-    }
-
-    .sticky-footer {
-      position: sticky;
-      bottom: 0;
-      padding: 0.75rem 0;
-      background: var(--pico-background-color);
-    }
-
-    .muted {
-      color: var(--pico-muted-color);
-    }
-
-    .mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
-
-    #props code,
-    #inputs code {
-      margin-right: .5rem;
-    }
-
-    #props small,
-    #inputs small {
-      opacity: .7;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    @media (max-width: 900px) {
-      .grid-2 {
-        grid-template-columns: 1fr;
-      }
-    }
+    header{padding:1.25rem 0 .25rem}.center{text-align:center}
+    .sticky-footer{position:sticky;bottom:0;padding:.75rem 0;background:var(--pico-background-color)}
+    .muted{color:var(--pico-muted-color)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media (max-width:900px){.grid-2{grid-template-columns:1fr}}
+    .overflow-auto{overflow:auto}
   </style>
 </head>
-
 <body>
   <header class="container center">
     <h2>Rive → CasparCG</h2>
@@ -63,46 +21,18 @@
   </header>
 
   <main class="container">
-    <!-- Top: file chooser centered -->
+    <!-- File picker -->
     <article>
-      <form id="fileForm" class="center">
+      <form class="center">
         <label for="rivfile"><strong>Select a .riv file</strong></label>
         <input id="rivfile" type="file" accept=".riv" />
         <small id="fileStatus" class="muted">No file selected.</small>
       </form>
     </article>
 
-    <!-- Detected structure & selectors -->
+    <!-- Detected structure -->
     <article id="detectedCard" style="display:none">
       <h4>Detected Structure</h4>
-      <label for="presetToggle" style="display:flex;align-items:center;gap:.5rem;margin:.75rem 0 .5rem;">
-        <input id="presetToggle" type="checkbox" /> Generate Caspar preset (.xml)
-      </label>
-      <div id="presetConfig" style="display:none;margin-bottom:1rem;">
-        <div class="grid-2">
-          <div>
-            <label for="presetLabel">Preset Label / Name</label>
-            <input id="presetLabel" type="text" />
-          </div>
-          <div>
-            <label for="presetDevice">Caspar Device</label>
-            <input id="presetDevice" type="text" value="Localhost" />
-          </div>
-        </div>
-        <div class="grid-2" style="margin-top:0.75rem;">
-          <div>
-            <label for="presetLayer">Layer</label>
-            <input id="presetLayer" type="number" min="1" value="20" />
-          </div>
-          <div>
-            <label for="presetSendJson">Send as JSON</label>
-            <select id="presetSendJson">
-              <option value="true" selected>True</option>
-              <option value="false">False</option>
-            </select>
-          </div>
-        </div>
-      </div>
       <div class="grid-2">
         <div>
           <label for="artboardSel">Artboard</label>
@@ -116,68 +46,39 @@
 
       <details open style="margin-top:1rem">
         <summary><strong>ViewModel Properties (data-binding)</strong></summary>
-<div class="overflow-auto">
-        <table id="propsTable" role="grid">
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Type</th>
-              <th scope="col">Sample JSON key</th>
-              <th scope="col">Default</th>
-              <th scope="col">Notes</th>
-            </tr>
-          </thead>
-          <tbody id="propsBody"></tbody>
-        </table>
+        <div class="overflow-auto">
+          <table id="propsTable" role="grid">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Type</th>
+                <th scope="col">Sample JSON key</th>
+                <th scope="col">Default</th>
+                <th scope="col">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="propsBody"></tbody>
+          </table>
         </div>
-
         <p id="propsEmpty" class="muted" style="display:none">No ViewModel properties found.</p>
       </details>
-
-
     </article>
 
-    <!-- Caspar mapping + download -->
+    <!-- Mapping + preset -->
     <article id="mappingCard" style="display:none">
       <h4>CasparCG Animation Mapping</h4>
-      <p class="muted">Choose which <em>trigger inputs</em> the template should call for Play/In, Out, and Next.
-        (Optional; you can also drive triggers via <code class="mono">CG ... UPDATE</code>.)</p>
-      <p id="runtimeNotice" class="muted" style="display:none;margin-top:-0.5rem;margin-bottom:1rem">
+      <p class="muted">Choose which <em>ViewModel triggers</em> the template should call for Play/In, Out, and Next.
+        (You can also fire any trigger via <code class="mono">CG ... UPDATE</code>.)</p>
+
+      <p id="runtimeNotice" class="muted" style="display:none;margin-top:-.5rem;margin-bottom:1rem">
         WebGL/WebGPU requires enabling <code>&lt;enable-gpu&gt;true&lt;/enable-gpu&gt;</code> in your CasparCG config; falling back to Canvas if unavailable.
       </p>
       <fieldset id="runtimeChoice" style="margin:1rem 0">
         <legend><strong>Rive Runtime</strong></legend>
         <label><input type="radio" name="runtime" value="caspar-basic" checked /> Canvas (recommended)</label>
-        <label><input type="radio" name="runtime" value="caspar-basic-webgl" /> WebGL / WebGPU (requires CasparCG GPU mode)</label
+        <label><input type="radio" name="runtime" value="caspar-basic-webgl" /> WebGL / WebGPU (requires CasparCG GPU mode)</label>
       </fieldset>
-      <label for="presetToggle" style="display:flex;align-items:center;gap:.5rem;margin:.75rem 0 .5rem;">
-        <input id="presetToggle" type="checkbox" /> Generate Caspar preset (.xml)
-      </label>
-      <div id="presetConfig" style="display:none;margin-bottom:1rem;">
-        <div class="grid-2">
-          <div>
-            <label for="presetLabel">Preset Label / Name</label>
-            <input id="presetLabel" type="text" />
-          </div>
-          <div>
-            <label for="presetDevice">Caspar Device</label>
-            <input id="presetDevice" type="text" value="Localhost" />
-          </div>
-        </div>
-        <div class="grid-2" style="margin-top:0.75rem;">
-          <div>
-            <label for="presetLayer">Layer</label>
-            <input id="presetLayer" type="number" min="1" value="20" />
-          </div>
-          <div>
-            <label for="presetSendJson">Send as JSON</label>
-            <select id="presetSendJson">
-              <option value="true" selected>True</option>
-              <option value="false">False</option>
-            </select>
-          </div>
-        </div>
-      </div>
+
       <div class="grid-2">
         <div>
           <label for="inTriggerSel">Play / In trigger</label>
@@ -198,417 +99,20 @@
         <label for="includeVmProps">Include ViewModel property mapping in template</label>
       </fieldset>
 
-      <div class="sticky-footer center">
-        <button id="downloadBtn" class="contrast" disabled>Download Caspar Template</button>
-        <p id="status" class="muted" style="margin:.5rem 0 0"></p>
-      </div>
+<div class="sticky-footer center" style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
+  <button id="downloadBtn" class="contrast" disabled>Download Caspar Template</button>
+  <button id="downloadPresetBtn" class="secondary" disabled>Download Preset (.xml)</button>
+  <p id="status" class="muted" style="margin:.5rem 0 0;flex-basis:100%"></p>
+</div>
+
     </article>
   </main>
 
-  <!-- Hidden canvas just to satisfy the Rive runtime (we don't render) -->
   <canvas id="hiddenCanvas" width="64" height="64" style="display:none"></canvas>
 
-  <!-- Rive Web (Canvas) -->
+  <!-- Rive Web (Canvas runtime) -->
   <script src="https://unpkg.com/@rive-app/canvas"></script>
-  <script type="module">
-    const $ = (s, el = document) => el.querySelector(s);
-    const fileEl = $('#rivfile');
-    const fileStatus = $('#fileStatus');
-    const detectedCard = $('#detectedCard');
-    const mappingCard = $('#mappingCard');
-    const artSel = $('#artboardSel');
-    const smSel = $('#smSel');
-    const propsBox = $('#props');
-    const inputsBox = $('#inputs');
-    const inSel = $('#inTriggerSel');
-    const outSel = $('#outTriggerSel');
-    const nextSel = $('#nextTriggerSel');
-    const includeVmPropsEl = $('#includeVmProps');
-    const downloadBtn = $('#downloadBtn');
-    const statusEl = $('#status');
-    const canvas = $('#hiddenCanvas');
-    const propsTable = $('#propsTable');
-    const propsBody = $('#propsBody');
-    const propsEmpty = $('#propsEmpty');
-    const presetToggle = $('#presetToggle');
-    const presetConfig = $('#presetConfig');
-    const presetLabelEl = $('#presetLabel');
-    const presetDeviceEl = $('#presetDevice');
-    const presetLayerEl = $('#presetLayer');
-    const presetSendJsonEl = $('#presetSendJson');
-    const downloadPresetBtn = $('#downloadPresetBtn');
-    if (presetLabelEl) presetLabelEl.dataset.mode = 'auto';
-
-    let file, buffer, contents;
-    let currentArt = '';
-    let currentSM = '';
-    let schema = null; // { artboard, stateMachine, inputs[], viewModelProps[] }
-
-    fileEl.addEventListener('change', async () => {
-      file = fileEl.files?.[0];
-      if (!file) {
-        fileStatus.textContent = 'No file selected.';
-        return;
-      }
-      fileStatus.textContent = 'Reading file…';
-      schema = null;
-      updatePresetUI();
-      buffer = await file.arrayBuffer();
-      await inspectContents();
-      detectedCard.style.display = 'block';
-      mappingCard.style.display = 'block';
-      fileStatus.textContent = `Loaded ${file.name}`;
-      downloadBtn.disabled = false;
-      if (presetLabelEl && (presetLabelEl.dataset.mode !== 'user' || !presetLabelEl.value)) {
-        presetLabelEl.value = derivePresetLabel();
-        presetLabelEl.dataset.mode = 'auto';
-      }
-      updatePresetUI();
-    });
-
-    async function inspectContents() {
-      // First instance: read top-level contents (artboards, SMs)
-      await new Promise((resolve, reject) => {
-        const r = new rive.Rive({
-          buffer, canvas, autoplay: false,
-          onLoad() {
-            try {
-              contents = r.contents; // hierarchy summary (artboards, SMs, inputs)
-              const artNames = (contents?.artboards || []).map(a => a.name);
-              populateSelect(artSel, artNames, currentArt || artNames[0] || '');
-              currentArt = artSel.value;
-
-              const smsForArt = getSMsForArt(currentArt);
-              populateSelect(smSel, smsForArt, currentSM || smsForArt[0] || '');
-              currentSM = smSel.value;
-            } finally {
-              try { r.cleanup(); } catch { }
-              resolve();
-            }
-          },
-          onLoadError: reject
-        });
-      });
-
-      // Second instance: bind to selected artboard/SM to get VM props & inputs
-      await buildSchema(currentArt, currentSM);
-      renderSchema();
-    }
-
-    artSel.addEventListener('change', async () => {
-      currentArt = artSel.value;
-      const sms = getSMsForArt(currentArt);
-      populateSelect(smSel, sms, sms[0] || '');
-      currentSM = smSel.value;
-      await buildSchema(currentArt, currentSM);
-      renderSchema();
-    });
-
-    smSel.addEventListener('change', async () => {
-      currentSM = smSel.value;
-      await buildSchema(currentArt, currentSM);
-      renderSchema();
-    });
-
-    function getSMsForArt(artName) {
-      const art = (contents?.artboards || []).find(a => a.name === artName);
-      return (art?.stateMachines || []).map(sm => sm.name);
-    }
-
-    function populateSelect(sel, items, selected = '') {
-      sel.innerHTML = '';
-      if (!items || items.length === 0) {
-        const opt = document.createElement('option');
-        opt.value = ''; opt.textContent = '(none)';
-        sel.appendChild(opt);
-        sel.disabled = true;
-        return;
-      }
-      sel.disabled = false;
-      for (const name of items) {
-        const opt = document.createElement('option');
-        opt.value = name; opt.textContent = name;
-        if (name === selected) opt.selected = true;
-        sel.appendChild(opt);
-      }
-    }
-
-async function buildSchema(artboard, stateMachine){
-  schema = await new Promise((resolve, reject) => {
-    const r = new rive.Rive({
-      buffer, canvas,
-      autoplay: false,
-      artboard,
-      stateMachines: stateMachine || undefined,
-      autoBind: true,
-      onLoad() {
-        let viewModelProps = [];
-        try {
-          const vm = r.defaultViewModel?.();
-          viewModelProps = vm?.properties
-            ? vm.properties.map((p) => ({
-                name: p.name,
-                type: p.type,
-                value: coerceViewModelValue(p.type, safeGet(() => p.value))
-              }))
-            : [];
-        } catch {}
-        resolve({ artboard, stateMachine, viewModelProps, inputs: [] });
-        try { r.cleanup(); } catch {}
-      },
-      onLoadError: reject
-    });
-  });
-}
-
-
-function renderSchema(){
-  // ViewModel table
-  propsBody.innerHTML = '';
-  if (!schema.viewModelProps.length) {
-    propsTable.style.display = 'none';
-    propsEmpty.style.display = 'block';
-  } else {
-    propsTable.style.display = '';
-    propsEmpty.style.display = 'none';
-
-    const rows = [...schema.viewModelProps].sort((a,b)=>a.name.localeCompare(b.name));
-    for (const p of rows) {
-      const note =
-        p.type === 'color'   ? 'Accepts <code>#RRGGBB</code> or <code>0xAARRGGBB</code>' :
-        p.type === 'trigger' ? 'Fire by mapping to Play/Out/Next or via UPDATE { "<name>": true }' :
-        '';
-      const defaultVal = formatPresetDisplayValue(p);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><code>${escapeHtml(p.name)}</code></td>
-        <td><small class="muted">${p.type}</small></td>
-        <td><code>${escapeHtml(p.name)}</code></td>
-        <td>${defaultVal != null ? `<code>${escapeHtml(String(defaultVal))}</code>` : '<span class="muted">n/a</span>'}</td>
-        <td>${note}</td>
-      `;
-      propsBody.appendChild(tr);
-    }
-  }
-
-  // Trigger mapping selects (from ViewModel properties only)
-  const triggerNames = schema.viewModelProps.filter(p => p.type === 'trigger').map(p => p.name);
-  populateSelect(inSel,   ['(none)', ...triggerNames], '(none)');
-  populateSelect(outSel,  ['(none)', ...triggerNames], '(none)');
-  populateSelect(nextSel, ['(none)', ...triggerNames], '(none)');
-  updatePresetUI();
-}
-
-
-    const runtimeNotice = document.getElementById('runtimeNotice');
-    const runtimeInputs = Array.from(document.querySelectorAll('input[name="runtime"]'));
-    const updateRuntimeNotice = () => {
-      const current = document.querySelector('input[name="runtime"]:checked');
-      if (!runtimeNotice) return;
-      runtimeNotice.style.display = current && current.value === 'caspar-basic-webgl' ? '' : 'none';
-    };
-    runtimeInputs.forEach((input) => {
-      input.addEventListener('change', updateRuntimeNotice);
-    });
-    updateRuntimeNotice();
-
-    if (presetToggle) {
-      presetToggle.addEventListener('change', () => {
-        if (presetToggle.checked && presetLabelEl && (presetLabelEl.dataset.mode !== 'user' || !presetLabelEl.value)) {
-          presetLabelEl.value = derivePresetLabel();
-          presetLabelEl.dataset.mode = 'auto';
-        }
-        updatePresetUI();
-      });
-    }
-
-    if (presetLabelEl) {
-      presetLabelEl.addEventListener('input', () => {
-        presetLabelEl.dataset.mode = 'user';
-      });
-    }
-
-    if (downloadPresetBtn) {
-      downloadPresetBtn.addEventListener('click', () => {
-        if (!schema || !(presetToggle && presetToggle.checked)) return;
-        const rawLabel = (presetLabelEl?.value || '').trim();
-        const label = rawLabel || derivePresetLabel();
-        const device = (presetDeviceEl?.value || 'Localhost').trim() || 'Localhost';
-        const layerValue = parseInt(presetLayerEl?.value || '20', 10);
-        const sendAsJson = (presetSendJsonEl?.value ?? 'true') === 'true';
-        const presetName = sanitizePresetName(label);
-        const templateBase = `caspar-${(file?.name || 'template').replace(/\.[^.]+$/, '')}`;
-        const componentData = (schema.viewModelProps || [])
-          .filter((p) => p.type !== 'trigger' && p.value != null)
-          .map((p) => ({ id: p.name, value: presetValueForXml(p) }));
-
-        const xml = buildPresetXml({
-          label,
-          name: templateBase,
-          device,
-          layer: Number.isFinite(layerValue) ? layerValue : 20,
-          sendAsJson,
-          componentData
-        });
-
-        const blob = new Blob([xml], { type: 'application/xml' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `${presetName}.xml`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        statusEl.textContent = 'Downloaded preset.';
-      });
-    }
-
-    updatePresetUI();
-
-    downloadBtn.addEventListener('click', async () => {
-      if (!schema) return;
-      statusEl.textContent = 'Generating…';
-
-      const options = {
-        casparTriggers: {
-          in: pickOrNull(inSel.value),
-          out: pickOrNull(outSel.value),
-          next: pickOrNull(nextSel.value)
-        },
-        rivPath: (file && file.name) ? file.name : "graphics.riv",
-        includeViewModelProps: !!includeVmPropsEl.checked
-      };
-
-      const selectedTemplate = document.querySelector('input[name="runtime"]:checked')?.value || 'caspar-basic';
-
-      const payload = {
-        template: selectedTemplate,
-        schema,
-        filename: `caspar-${(file?.name || 'template').replace(/\.riv$/i, '')}.html`,
-        options
-      };
-
-      const res = await fetch('/generate', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        statusEl.textContent = `Error: ${res.status} ${res.statusText}`;
-        return;
-      }
-
-      const blob = await res.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = (res.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1]) || 'caspar-template.html';
-      a.click();
-      URL.revokeObjectURL(a.href);
-      statusEl.textContent = 'Downloaded template.';
-    });
-
-    // helpers
-
-    function safeGet(fn) {
-      try { return fn(); }
-      catch { return null; }
-    }
-
-    function coerceViewModelValue(type, raw) {
-      if (raw == null) return null;
-      switch (type) {
-        case "string":
-          return String(raw);
-        case "number": {
-          const n = Number(raw);
-          return Number.isFinite(n) ? n : null;
-        }
-        case "boolean":
-          return !!raw;
-        case "color":
-          return toColorHex(raw);
-        default:
-          return raw;
-      }
-    }
-
-    function toColorHex(raw) {
-      if (raw == null) return null;
-      if (typeof raw === "string") {
-        const trimmed = raw.trim();
-        if (/^#?[0-9a-f]{6}$/i.test(trimmed)) {
-          return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
-        }
-        if (/^#?[0-9a-f]{8}$/i.test(trimmed)) {
-          return `#${trimmed.slice(-6)}`;
-        }
-      }
-      const num = Number(raw);
-      if (!Number.isFinite(num)) return null;
-      const hex = (num >>> 0).toString(16).padStart(8, "0");
-      return `#${hex.slice(-6)}`;
-    }
-
-    function formatPresetDisplayValue(prop) {
-      if (!prop) return null;
-      const val = prop.value;
-      if (val == null) return null;
-      if (prop.type === "boolean") return val ? "true" : "false";
-      if (prop.type === "number") return String(val);
-      return String(val);
-    }
-
-    function presetValueForXml(prop) {
-      if (!prop || prop.value == null) return "";
-      if (prop.type === "boolean") return prop.value ? "true" : "false";
-      if (prop.type === "number") return String(prop.value);
-      return String(prop.value);
-    }
-
-    function sanitizePresetName(raw) {
-      const cleaned = String(raw || "").toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-      if (!cleaned) return "CASPAR_TEMPLATE";
-      return cleaned.startsWith("CASPAR") ? cleaned.replace(/^CASPAR_/, "CASPAR-") : `CASPAR-${cleaned}`;
-    }
-
-    function derivePresetLabel() {
-      const base = file?.name ? file.name.replace(/\\.[^.]+$/, "") : "template";
-      return sanitizePresetName(base);
-    }
-
-    function escapeXml(str) {
-      return String(str ?? "").replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&apos;", '"': "&quot;" }[ch]));
-    }
-
-    function buildPresetXml({ label, name, device, layer, sendAsJson, componentData }) {
-      const layerValue = Number.isFinite(Number(layer)) ? Number(layer) : 20;
-      const sendJsonStr = sendAsJson ? "true" : "false";
-      let templatedata;
-      if (componentData && componentData.length) {
-        const rows = componentData.map(({ id, value }) => `        <componentdata>\n          <id>${escapeXml(id)}</id>\n          <value>${escapeXml(value)}</value>\n        </componentdata>`).join("\n");
-        templatedata = `\n      <templatedata>\n${rows}\n      </templatedata>`;
-      } else {
-        templatedata = "\n      <templatedata />";
-      }
-      return `<?xml version="1.0"?>\n<items>\n  <item>\n    <type>TEMPLATE</type>\n    <devicename>${escapeXml(device)}</devicename>\n    <label>${escapeXml(label)}</label>\n    <name>${escapeXml(name)}</name>\n    <flashlayer>${layerValue}</flashlayer>\n    <invoke></invoke>\n    <usestoreddata>false</usestoreddata>\n    <useuppercasedata>false</useuppercasedata>\n    <triggeronnext>false</triggeronnext>\n    <sendasjson>${sendJsonStr}</sendasjson>${templatedata}\n    <color>Transparent</color>\n  </item>\n</items>\n`;
-    }
-
-    function updatePresetUI() {
-      if (!presetToggle || !presetConfig || !downloadPresetBtn) return;
-      const enabled = presetToggle.checked;
-      presetConfig.style.display = enabled ? "" : "none";
-      downloadPresetBtn.style.display = enabled ? "" : "none";
-      downloadPresetBtn.disabled = !(enabled && schema);
-      if (enabled && presetLabelEl && (presetLabelEl.dataset.mode !== "user" || !presetLabelEl.value)) {
-        presetLabelEl.value = derivePresetLabel();
-        presetLabelEl.dataset.mode = "auto";
-      }
-    }
-    const pickOrNull = (v) => (v && v !== '(none)') ? v : null;
-    const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-  </script>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4892068453008931"
-     crossorigin="anonymous"></script>
+  <!-- App modules -->
+  <script type="module" src="/js/main.mjs"></script>
 </body>
-
 </html>
