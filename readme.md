@@ -98,14 +98,6 @@ directory = "public"
 
 ---
 
-## Local Dev
-
-```bash
-npx wrangler dev
-```
-
----
-
 ## Deploy
 
 ```bash
