@@ -1,264 +1,119 @@
 // src/templates/caspar-basic-webgl.mjs
-// Same data-binding behaviour as caspar-basic, but uses the WebGL runtime.
 export default {
   key: "caspar-basic-webgl",
-  name: "Caspar Basic (WebGL)",
+  name: "Caspar Basic (WebGL/WebGPU – Compat)",
   kind: "single-html",
   description:
-    "HTML template using the Rive WebGL runtime for animation playback",
+    "Rive WebGL/WebGPU runtime with View Model data-binding. Requires CasparCG GPU mode. Compat JS for 2.4.x.",
   async generate(schema, { aliasMap = {}, options = {} } = {}) {
-    const html = buildHtml(schema, aliasMap, options);
+    const html = buildHtml(schema || {}, aliasMap || {}, options || {});
     return { type: "html", content: html };
   },
 };
 
 function buildHtml(schema, aliasMap, options) {
-  const { artboard = "", stateMachine = "", viewModelProps = [] } = schema || {};
-  const trigIn   = options?.casparTriggers?.in   || null;
-  const trigOut  = options?.casparTriggers?.out  || null;
-  const trigNext = options?.casparTriggers?.next || null;
-  const runtimeUrl = options?.riveRuntimeUrl || "https://unpkg.com/@rive-app/webgl";
-  const rivPath = options?.rivPath || "./graphics.riv";
+  var artboard     = schema.artboard     || "";
+  var stateMachine = schema.stateMachine || "";
+  var viewModelProps = Array.isArray(schema.viewModelProps) ? schema.viewModelProps : [];
+  var rivPath = options && options.rivPath ? options.rivPath : "./graphics.riv";
+  var includeMap = !(options && options.hasOwnProperty("includeViewModelProps") && options.includeViewModelProps === false);
 
-  const setters = (viewModelProps || []).map(({ name, type }) => {
-    const key  = aliasMap[name] || name;
-    const safe = escapeJS(name);
-    if (type === "string")
-      return `
-        if (o["${key}"] != null) {
-          try {
-            const inst = vmi && vmi.string("${safe}");
-            if (inst) inst.value = String(o["${key}"]);
-          } catch (err) {}
-        }`;
-    if (type === "number")
-      return `
-        if (o["${key}"] != null) {
-          try {
-            const inst = vmi && vmi.number("${safe}");
-            if (inst) inst.value = Number(o["${key}"] || 0);
-          } catch (err) {}
-        }`;
-    if (type === "boolean")
-      return `
-        if (o["${key}"] != null) {
-          try {
-            const inst = vmi && vmi.boolean("${safe}");
-            if (inst) inst.value = !!o["${key}"];
-          } catch (err) {}
-        }`;
-    if (type === "color")
-      return `
-        if (o["${key}"] != null) {
-          try {
-            const s = String(o["${key}"]).trim();
-            const c = s.startsWith("#")
-              ? (s.length === 7 ? (0xFF000000 | parseInt(s.slice(1),16)) >>> 0 : (parseInt(s.slice(1),16)) >>> 0)
-              : Number(s);
-            const inst = vmi && vmi.color("${safe}");
-            if (inst) inst.value = c;
-          } catch (err) {}
-        }`;
-    if (type === "trigger")
-      return `
-        if (o["${key}"] === true) {
-          try {
-            const inst = vmi && vmi.trigger("${safe}");
-            if (inst) inst.trigger();
-          } catch (err) {}
-        }`;
+  var trigIn   = options && options.casparTriggers ? options.casparTriggers.in   || null : null;
+  var trigOut  = options && options.casparTriggers ? options.casparTriggers.out  || null : null;
+  var trigNext = options && options.casparTriggers ? options.casparTriggers.next || null : null;
+
+  var setters = viewModelProps.map(function (p) {
+    var key  = (aliasMap && aliasMap[p.name]) || p.name;
+    var safe = escapeJS(p.name);
+    if (p.type === "string") {
+      return 'if (o["' + key + '"] != null) try { if (vmi && vmi.string) { var it=vmi.string("' + safe + '"); if (it) it.value = String(o["' + key + '"]); } } catch(e){}';
+    }
+    if (p.type === "number") {
+      return 'if (o["' + key + '"] != null) try { if (vmi && vmi.number) { var it=vmi.number("' + safe + '"); if (it) it.value = Number(o["' + key + '"]||0); } } catch(e){}';
+    }
+    if (p.type === "boolean") {
+      return 'if (o["' + key + '"] != null) try { if (vmi && vmi.boolean) { var it=vmi.boolean("' + safe + '"); if (it) it.value = !!o["' + key + '"]; } } catch(e){}';
+    }
+    if (p.type === "color") {
+      return ''
+      + 'if (o["' + key + '"] != null) {'
+      + '  try {'
+      + '    var s = String(o["' + key + '"]).trim();'
+      + '    var c = (s.charAt(0) === "#")'
+      + '      ? (s.length === 7 ? (0xFF000000 | parseInt(s.slice(1),16)) >>> 0 : (parseInt(s.slice(1),16)) >>> 0)'
+      + '      : Number(s);'
+      + '    if (vmi && vmi.color) { var it=vmi.color("' + safe + '"); if (it) it.value = c; }'
+      + '  } catch(e){}'
+      + '}';
+    }
+    if (p.type === "trigger") {
+      return ''
+      + '// Fire triggers via UPDATE: {"' + key + '": true}\n'
+      + 'if (o["' + key + '"] === true) { try { fireVmTrigger("' + safe + '"); } catch(e){} }';
+    }
     return "";
   }).join("\n      ");
 
-  return `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>CasparCG + Rive (WebGL)</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<style>
-  html{background:transparent;overflow:hidden}
-  body{margin:0}
-  #stage{position:absolute;inset:0}
-  canvas{width:100vw;height:100vh}
-</style>
-</head>
-<body>
-  <div id="stage"><canvas id="cg" width="1920" height="1080"></canvas></div>
-  <script src="${runtimeUrl}"></script>
-  <script>
-    'use strict';
-    const RIVE_FILE = ${JSON.stringify(rivPath)};
-    let canvasEl = null;
-    let riveBytes = null;
-    let riveLoading = false;
-    let riveLoadFailed = false;
-    let r = null;
-    let vmi = null;
-    let pendingData = null;
-
-    function loadRiveBytes() {
-      if (riveBytes || riveLoading || riveLoadFailed) {
-        return;
-      }
-      riveLoading = true;
-      try {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', RIVE_FILE, true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onload = function () {
-          riveLoading = false;
-          if (xhr.status === 200 || xhr.status === 0) {
-            if (xhr.response && xhr.response.byteLength > 0) {
-              riveBytes = xhr.response;
-              tryCreateRiveInstance();
-            } else {
-              riveLoadFailed = true;
-              console.error('Rive file appears empty:', RIVE_FILE);
-            }
-          } else {
-            riveLoadFailed = true;
-            console.error('Failed to load Rive file', RIVE_FILE, xhr.status, xhr.statusText);
-          }
-        };
-        xhr.onerror = function (err) {
-          riveLoading = false;
-          riveLoadFailed = true;
-          console.error('Error loading Rive file', RIVE_FILE, err);
-        };
-        xhr.send();
-      } catch (err) {
-        riveLoading = false;
-        riveLoadFailed = true;
-        console.error('Exception while loading Rive file', err);
-      }
-    }
-
-    function tryCreateRiveInstance() {
-      if (r) {
-        return true;
-      }
-      if (!window.rive || !window.rive.Rive) {
-        return false;
-      }
-      if (!riveBytes) {
-        loadRiveBytes();
-        return false;
-      }
-      if (!canvasEl) {
-        canvasEl = document.getElementById('cg');
-        if (!canvasEl) {
-          return false;
-        }
-      }
-      try {
-        r = new window.rive.Rive({
-          buffer: riveBytes,
-          canvas: canvasEl,
-          autoplay: false,
-          artboard: ${JSON.stringify(artboard || undefined)},
-          stateMachines: ${JSON.stringify(stateMachine || undefined)},
-          autoBind: true,
-          onLoad() {
-            try {
-              if (r) r.resizeDrawingSurfaceToCanvas();
-            } catch (err) {}
-            try {
-              vmi = r ? r.viewModelInstance : null;
-            if (pendingData) { try { apply(pendingData); } catch (err) { console.error("pending apply failed", err); } }
-            } catch (err) {}
-            addEventListener('resize', function () {
-              try {
-                if (r) r.resizeDrawingSurfaceToCanvas();
-              } catch (err) {}
-            });
-          },
-          onLoadError(err) {
-            console.error('Failed to load Rive animation', err);
-          }
-        });
-      } catch (err) {
-        console.error('Failed to initialise Rive', err);
-        return true;
-      }
-      return true;
-    }
-
-    function boot() {
-      if (tryCreateRiveInstance()) {
-        return;
-      }
-      if (riveLoadFailed) {
-        return;
-      }
-      setTimeout(boot, 60);
-    }
-
-    function start() {
-      loadRiveBytes();
-      boot();
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', start);
-    } else {
-      start();
-    }
-
-    function apply(o){
-      if (!o) return;
-      pendingData = o;
-      if (!vmi) return;
-      ${setters}
-    }
-
-    window.update = function (raw) {
-      try { apply(JSON.parse(raw)); }
-      catch (e) { console.error('bad JSON for UPDATE', e, raw); }
-    };
-
-    window.play = function () {
-      try {
-        if (r) r.play(${JSON.stringify(stateMachine || undefined)});
-      } catch (err) {}
-      ${trigIn   ? `try {
-        const inst = vmi && vmi.trigger(${JSON.stringify(trigIn)});
-        if (inst) inst.trigger();
-      } catch (err) {}
-` : ""}
-    };
-
-    window.next = function () {
-      ${trigNext ? `try {
-        const inst = vmi && vmi.trigger(${JSON.stringify(trigNext)});
-        if (inst) inst.trigger();
-      } catch (err) {}
-` : ""}
-    };
-
-    window.stop = function () {
-      ${trigOut  ? `try {
-        const inst = vmi && vmi.trigger(${JSON.stringify(trigOut)});
-        if (inst) inst.trigger();
-      } catch (err) {}
-` : ""}
-      try {
-        if (r) r.stop(${JSON.stringify(stateMachine || undefined)});
-      } catch (err) {}
-    };
-
-    window.remove = function () {
-      try {
-        if (r) r.cleanup();
-      } catch (err) {}
-      r = null;
-      vmi = null;
-    };
-  </script>
-</body>
-</html>`;
+  return '<!doctype html>\n'
++ '<html>\n<head>\n<meta charset="utf-8" />\n<title>CasparCG + Rive (WebGL/WebGPU – Compat)</title>\n'
++ '<meta name="viewport" content="width=device-width, initial-scale=1" />\n'
++ '<style>html{background:transparent;overflow:hidden}body{margin:0}#stage{position:absolute;inset:0}canvas{width:100vw;height:100vh}</style>\n'
++ '</head>\n<body>\n'
++ '  <div id="stage"><canvas id="cg" width="1920" height="1080"></canvas></div>\n'
++ '  <script src="https://unpkg.com/@rive-app/webgl"><\/script>\n'
++ '  <script>\n'
++ '  (function(){\n'
++ '    "use strict";\n'
++ '    var CANVAS = document.getElementById("cg");\n'
++ '    var r = null, vmi = null;\n'
++ '\n'
++ '    function boot(){\n'
++ '      try {\n'
++ '        r = new rive.Rive({\n'
++ '          src: ' + JSON.stringify(rivPath) + ',\n'
++ '          canvas: CANVAS,\n'
++ '          autoplay: false,\n'
++ '          artboard: ' + JSON.stringify(artboard || undefined) + ',\n'
++ '          stateMachines: ' + JSON.stringify(stateMachine || undefined) + ',\n'
++ '          autoBind: true,\n'
++ '          onLoad: function(){\n'
++ '            try { if (r && r.resizeDrawingSurfaceToCanvas) r.resizeDrawingSurfaceToCanvas(); } catch(e){}\n'
++ '            try { vmi = r && r.viewModelInstance ? r.viewModelInstance : null; } catch(e){ vmi = null; }\n'
++ '            try { window.addEventListener("resize", function(){ try { if (r && r.resizeDrawingSurfaceToCanvas) r.resizeDrawingSurfaceToCanvas(); } catch(e){} }); } catch(e){}\n'
++ '          }\n'
++ '        });\n'
++ '      } catch(e) { console.error("Rive boot error", e); }\n'
++ '    }\n'
++ '    boot();\n'
++ '\n'
++ '    function fireVmTrigger(name){\n'
++ '      if (!name || !vmi) return false;\n'
++ '      try {\n'
++ '        var t = (vmi.trigger) ? vmi.trigger(name) : null;\n'
++ '        if (!t) return false;\n'
++ '        if (typeof t.fire === "function")    { t.fire();    return true; }\n'
++ '        if (typeof t.trigger === "function") { t.trigger(); return true; }\n'
++ '        if (typeof t === "object" && "value" in t) { try { t.value = true; return true; } catch(e){} }\n'
++ '      } catch(e) { console.warn("VM trigger failed:", name, e); }\n'
++ '      return false;\n'
++ '    }\n'
++ '\n'
++ '    function apply(o){\n'
++ '      if (!o) return;\n'
++ '      ' + (includeMap ? setters : '// mapping disabled') + '\n'
++ '    }\n'
++ '\n'
++ '    // CasparCG HTML API — View Model only\n'
++ '    window.update = function(raw){ try { apply(JSON.parse(raw)); } catch(e){ console.error("bad JSON for UPDATE", e, raw); } };\n'
++ '    window.play   = function(){ try { if (r && r.play) r.play(); } catch(e){} ' + (trigIn   ? ('fireVmTrigger(' + JSON.stringify(trigIn)   + ');') : '') + ' };\n'
++ '    window.next   = function(){ ' + (trigNext ? ('fireVmTrigger(' + JSON.stringify(trigNext) + ');') : '') + ' };\n'
++ '    window.stop   = function(){ var fired = ' + (trigOut ? ('fireVmTrigger(' + JSON.stringify(trigOut) + ')') : 'false') + '; if (!fired) { try { if (r && r.stop) r.stop(); } catch(e){} } };\n'
++ '    window.remove = function(){ try { if (r && r.cleanup) r.cleanup(); } catch(e){} };\n'
++ '  })();\n'
++ '  <\/script>\n'
++ '</body>\n</html>';
 }
 
 function escapeJS(s) {
-  return String(s).replace(/["\\]/g, function(m) { return "\\\\" + m; });
+  return String(s).replace(/["\\]/g, function(m){ return "\\" + m; });
 }
