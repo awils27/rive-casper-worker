@@ -1,7 +1,8 @@
 import casparBasic from "./caspar-basic.mjs";
 import casparBasicWebgl from "./caspar-basic-webgl.mjs";
+import obsUrl from "./obs-url.mjs";
 
-const plugins = [casparBasic, casparBasicWebgl];
+const plugins = [casparBasic, casparBasicWebgl, obsUrl];
 
 export const listPlugins = () =>
   plugins.map(({ key, name, kind, description }) => ({ key, name, kind, description }));

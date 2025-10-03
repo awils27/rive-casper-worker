@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OBS URL Player Builder</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    header{padding:1.25rem 0 .25rem}.center{text-align:center}
+    .muted{color:var(--pico-muted-color)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media (max-width:900px){.grid-2{grid-template-columns:1fr}}
+    .overflow-auto{overflow:auto}
+    .row{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
+    input.mono, textarea.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace }
+  </style>
+</head>
+<body>
+  <header class="container center">
+    <h2>OBS URL Player</h2>
+    <p class="muted">Build a URL to control a Rive graphic in OBS Browser Source (Canvas).</p>
+  </header>
+
+  <main class="container">
+    <article>
+      <form class="center">
+        <label for="rivfile"><strong>Select a .riv file</strong></label>
+        <input id="rivfile" type="file" accept=".riv" />
+        <small id="fileStatus" class="muted">No file selected.</small>
+      </form>
+    </article>
+
+    <article id="detectedCard" style="display:none">
+      <h4>Detected Structure</h4>
+      <div class="grid-2">
+        <div>
+          <label for="artboardSel">Artboard</label>
+          <select id="artboardSel"></select>
+        </div>
+        <div>
+          <label for="smSel">State Machine</label>
+          <select id="smSel"></select>
+        </div>
+      </div>
+
+      <details open style="margin-top:1rem">
+        <summary><strong>ViewModel Properties (URL-driven)</strong></summary>
+        <div class="overflow-auto">
+          <table id="propsTable" role="grid">
+            <thead>
+              <tr>
+                <th>Name</th><th>Type</th><th>URL key</th><th>Default</th><th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="propsBody"></tbody>
+          </table>
+        </div>
+        <p id="propsEmpty" class="muted" style="display:none">No ViewModel properties found.</p>
+      </details>
+    </article>
+
+    <article id="mappingCard" style="display:none">
+      <h4>In/Out & Timers</h4>
+      <div class="grid-2">
+        <div>
+          <label for="inTriggerSel">In trigger</label>
+          <select id="inTriggerSel"></select>
+        </div>
+        <div>
+          <label for="outTriggerSel">Out trigger</label>
+          <select id="outTriggerSel"></select>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:1rem">
+        <div>
+          <label for="startMs">Start (ms before In plays)</label>
+          <input id="startMs" type="number" min="0" step="50" value="0" class="mono" />
+        </div>
+        <div>
+          <label for="outAfterMs">Out after (ms after In)</label>
+          <input id="outAfterMs" type="number" min="0" step="50" value="3000" class="mono" />
+        </div>
+      </div>
+
+      <fieldset role="group" style="margin-top:1rem">
+        <input id="includeDefaults" type="checkbox" checked />
+        <label for="includeDefaults">Include VM defaults in URL as <code class="mono">vm.&lt;Name&gt;</code> pairs</label>
+      </fieldset>
+
+      <hr />
+      <h5>URL</h5>
+      <div class="row">
+        <input id="urlOut" class="mono" type="text" readonly style="flex:1" />
+        <button id="copyUrlBtn" type="button">Copy</button>
+      </div>
+
+      <div class="row" style="margin-top:.75rem">
+        <button id="downloadObsHtml" class="secondary" type="button" disabled>Download OBS HTML</button>
+        <small class="muted">Place the .riv next to the downloaded HTML or host both; use the URL above in OBS Browser Source.</small>
+      </div>
+    </article>
+  </main>
+
+  <canvas id="hiddenCanvas" width="64" height="64" style="display:none"></canvas>
+
+  <script src="https://unpkg.com/@rive-app/canvas"></script>
+  <script type="module" src="../js/obs-main.mjs?v=1"></script>
+</body>
+</html>
