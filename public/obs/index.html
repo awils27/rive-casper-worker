@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>OBS URL Player Builder</title>
+  <title>OBS URL Player (Embedded)</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
     header{padding:1.25rem 0 .25rem}.center{text-align:center}
@@ -14,11 +14,13 @@
     .row{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
     input.mono, textarea.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace }
   </style>
+     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4892068453008931"
+     crossorigin="anonymous"></script>
 </head>
 <body>
   <header class="container center">
-    <h2>OBS URL Player</h2>
-    <p class="muted">Build a URL to control a Rive graphic in OBS Browser Source (Canvas).</p>
+    <h2>OBS URL Player (Embedded)</h2>
+    <p class="muted">Build a single-file HTML that embeds your .riv and can still be driven by URL parameters.</p>
   </header>
 
   <main class="container">
@@ -84,19 +86,21 @@
 
       <fieldset role="group" style="margin-top:1rem">
         <input id="includeDefaults" type="checkbox" checked />
-        <label for="includeDefaults">Include VM defaults in URL as <code class="mono">vm.&lt;Name&gt;</code> pairs</label>
+        <label for="includeDefaults">Bake VM defaults into the HTML (also overridable via <code class="mono">vm.&lt;Name&gt;</code> in URL)</label>
       </fieldset>
 
       <hr />
-      <h5>URL</h5>
+<h5>Parameters (copy & append)</h5>
       <div class="row">
         <input id="urlOut" class="mono" type="text" readonly style="flex:1" />
         <button id="copyUrlBtn" type="button">Copy</button>
       </div>
 
       <div class="row" style="margin-top:.75rem">
-        <button id="downloadObsHtml" class="secondary" type="button" disabled>Download OBS HTML</button>
-        <small class="muted">Place the .riv next to the downloaded HTML or host both; use the URL above in OBS Browser Source.</small>
+        <button id="downloadObsHtmlEmbedded" class="contrast" type="button" disabled>
+          Download OBS HTML (Embedded .riv)
+        </button>
+        <small class="muted">Copy these and append to your local HTML path in OBS (e.g., <code>file:///.../obs-My.html</code><strong><code>?vm.Title=Hello&startMs=500</code></strong>).</small>
       </div>
     </article>
   </main>
@@ -104,6 +108,6 @@
   <canvas id="hiddenCanvas" width="64" height="64" style="display:none"></canvas>
 
   <script src="https://unpkg.com/@rive-app/canvas"></script>
-  <script type="module" src="../js/obs-main.mjs?v=1"></script>
+  <script type="module" src="../js/obs-main.mjs?v=2"></script>
 </body>
 </html>

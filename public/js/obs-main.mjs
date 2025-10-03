@@ -1,6 +1,6 @@
-import { $, escapeHtml, populateSelect, formatDefaultCell, presetValueForXml, sanitizeFilename } from '../js/utils.mjs';
-import { inspectContents, buildSchema } from '../js/rive-introspect.mjs';
-import { generateTemplate } from '../js/api.mjs';
+import { $, escapeHtml, populateSelect, formatDefaultCell, presetValueForXml } from './utils.mjs';
+import { inspectContents, buildSchema } from './rive-introspect.mjs';
+import { downloadEmbeddedObsHtml } from './obs-embed.mjs';
 
 const els = {
   file: $('#rivfile'), fileStatus: $('#fileStatus'),
@@ -11,7 +11,7 @@ const els = {
   startMs: $('#startMs'), outAfterMs: $('#outAfterMs'),
   includeDefaults: $('#includeDefaults'),
   urlOut: $('#urlOut'), copyUrlBtn: $('#copyUrlBtn'),
-  downloadObsHtml: $('#downloadObsHtml'),
+  downloadObsHtmlEmbedded: $('#downloadObsHtmlEmbedded'),
   hiddenCanvas: $('#hiddenCanvas')
 };
 
@@ -56,28 +56,33 @@ function updateTriggerSelects(viewModelProps){
 }
 
 function buildUrl(){
-  const base = new URL('../obs/obs-player.html', window.location.origin + '/obs/'); // points at the OBS template path for preview/testing
-  const q = base.searchParams;
-  // core
-  q.set('riv', file?.name || 'graphics.riv');
-  if (currentArt) q.set('artboard', currentArt);
-  if (currentSM)  q.set('sm', currentSM);
-  const inTrig  = els.inSel.value;  if (inTrig && inTrig !== '(none)')  q.set('in', inTrig);
-  const outTrig = els.outSel.value; if (outTrig && outTrig !== '(none)') q.set('out', outTrig);
-  const start = Math.max(0, parseInt(els.startMs.value || '0', 10) || 0);
-  const outAfter = Math.max(0, parseInt(els.outAfterMs.value || '0', 10) || 0);
-  q.set('startMs', String(start));
-  if (outAfter > 0) q.set('outAfterMs', String(outAfter));
+  const sp = new URLSearchParams();
 
-  // VM defaults as url params (optional)
+  // core (no riv!)
+  if (currentArt) sp.set('artboard', currentArt);
+  if (currentSM)  sp.set('sm', currentSM);
+
+  const inTrig  = els.inSel.value;
+  const outTrig = els.outSel.value;
+  if (inTrig  && inTrig  !== '(none)') sp.set('in',  inTrig);
+  if (outTrig && outTrig !== '(none)') sp.set('out', outTrig);
+
+  const start = Math.max(0, parseInt(els.startMs.value || '0', 10) || 0);
+  const outA  = Math.max(0, parseInt(els.outAfterMs.value || '0', 10) || 0);
+  sp.set('startMs', String(start));
+  if (outA > 0) sp.set('outAfterMs', String(outA));
+
+  // VM defaults (optional)
   if (els.includeDefaults.checked){
     (schema?.viewModelProps || []).forEach(p => {
       if (p.type === 'trigger') return;
       if (p.value == null) return;
-      q.set('vm.'+p.name, presetValueForXml(p));
+      sp.set('vm.' + p.name, presetValueForXml(p));
     });
   }
-  els.urlOut.value = base.toString();
+
+  const qs = sp.toString();
+  els.urlOut.value = qs ? '?' + qs : '';
 }
 
 function onChangeRebuildUrl(){
@@ -107,7 +112,7 @@ els.file.addEventListener('change', async () => {
   els.detectedCard.style.display = 'block';
   els.mappingCard.style.display = 'block';
   els.fileStatus.textContent = `Loaded ${file.name}`;
-  els.downloadObsHtml.disabled = false;
+  els.downloadObsHtmlEmbedded.disabled = false;
 
   buildUrl();
 });
@@ -142,34 +147,29 @@ els.smSel.addEventListener('change', async () => {
   els.includeDefaults.addEventListener(evt, onChangeRebuildUrl);
 });
 
-// Copy URL
+// Copy URL (for convenience)
 els.copyUrlBtn.addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(els.urlOut.value); els.copyUrlBtn.textContent='Copied!'; setTimeout(()=>els.copyUrlBtn.textContent='Copy', 900); } catch {}
 });
 
-// Generate OBS HTML (download)
-els.downloadObsHtml.addEventListener('click', async () => {
+// Generate single-file OBS HTML (embedded .riv) — client-side only
+els.downloadObsHtmlEmbedded.addEventListener('click', async () => {
   if (!schema || !file) return;
-  const htmlFilename = sanitizeFilename(`obs-${(file.name || 'graphic').replace(/\\.riv$/i,'')}.html`);
-  const payload = {
-    template: "obs-url",
-    schema,                              // embed VM types for accurate URL mapping
-    filename: htmlFilename,
-    options: {
-      rivPath: file.name,                // default if ?riv= is omitted
-      startMs: parseInt(els.startMs.value || '0', 10) || 0,
-      outAfterMs: parseInt(els.outAfterMs.value || '-1', 10) || -1
-    }
+  const defaults = {
+    artboard: currentArt,
+    stateMachine: currentSM,
+    startMs: Math.max(0, parseInt(els.startMs.value || '0', 10) || 0),
+    outAfterMs: Math.max(-1, parseInt(els.outAfterMs.value || '-1', 10) || -1),
+    vmDefaults: els.includeDefaults.checked
+      ? Object.fromEntries((schema.viewModelProps || [])
+          .filter(p => p.type !== 'trigger' && p.value != null)
+          .map(p => [p.name, String(p.value)]))
+      : null
   };
   try {
-    const res = await fetch('/generate', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error(`Generate failed: ${res.status} ${res.statusText}`);
-    const blob = await res.blob();
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = htmlFilename; a.click();
-    URL.revokeObjectURL(a.href);
-  } catch (e){ console.error(e); alert(e.message); }
+    await downloadEmbeddedObsHtml(schema, file, defaults);
+  } catch (e) {
+    console.error(e);
+    alert(e.message || 'Failed to export embedded HTML');
+  }
 });
