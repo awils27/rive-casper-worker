@@ -1,7 +1,0 @@
-name = "rive-casper-generator"
-main = "src/worker.mjs"
-compatibility_date = "2025-09-25"
-compatibility_flags = ["nodejs_compat"]
-
-[assets]                                
-directory = "public"
